@@ -1,5 +1,6 @@
 import org.opencv.core.*;
 import org.opencv.highgui.Highgui;
+import org.opencv.imgproc.Imgproc;
 
 import java.io.*;
 import java.util.*;
@@ -16,9 +17,13 @@ public class Main {
         File source = new File("/home/sesshoumaru/bilet_skew.jpg");
         File target = new File("/home/sesshoumaru/target.png");
 
-        OpenCvUtils.adaptiveThreshold(source, target);
 
-        Mat temp = Highgui.imread(target.getAbsolutePath());
+        Mat temp = new Mat();
+        OpenCvUtils.erode(Highgui.imread(source.getAbsolutePath()), temp);
+        Highgui.imwrite(target.getAbsolutePath(), temp);
+        OpenCvUtils.adaptiveThreshold(target, target);
+
+        temp = Highgui.imread(target.getAbsolutePath());
         Map<Integer, Integer> angles = OpenCvUtils.detectMostPossibleRotationAngle(temp);
         List<Map.Entry<Integer, Integer>> sortedAngles = new ArrayList<Map.Entry<Integer, Integer>>(angles.entrySet());
         Iterator<Map.Entry<Integer, Integer>> iterator = sortedAngles.iterator();

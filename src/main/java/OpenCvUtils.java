@@ -14,18 +14,16 @@ public class OpenCvUtils {
         int threshold = 150;
         int minLineSize = 100;
         int lineGap = 50;
-
-        Imgproc.cvtColor(source, source, Imgproc.COLOR_BGR2GRAY);
-        Imgproc.HoughLinesP(source, lines, 1, Math.PI / 180, threshold, minLineSize, lineGap);
-
+        Mat inverted = new Mat();
+        Core.bitwise_not(source, inverted);
+        Imgproc.cvtColor(inverted, inverted, Imgproc.COLOR_BGR2GRAY);
+        Imgproc.HoughLinesP(inverted, lines, 1, Math.PI / 180, threshold, minLineSize, lineGap);
         return lines;
     }
 
     public static Map<Integer, Integer> detectMostPossibleRotationAngle(Mat source) {
-        Mat temp = new Mat();
-        Core.bitwise_not(source, temp);
         Map<Integer, Integer> anglesCount = new HashMap<Integer, Integer>();
-        Mat lines = getHoughLines(temp);
+        Mat lines = getHoughLines(source);
         for (int x = 0; x < lines.cols(); x++) {
             double[] vec = lines.get(0, x);
 
@@ -250,4 +248,10 @@ public class OpenCvUtils {
         return (dx1 * dx2 + dy1 * dy2) / Math.sqrt((dx1 * dx1 + dy1 * dy1) * (dx2 * dx2 + dy2 * dy2) + 1e-10);
     }
 
+    public static void erode(Mat source, Mat target) {
+        int size = Math.max(source.rows(), source.cols()) / 100;
+        size = size == 0 ? 1 : size;
+        Imgproc.erode(source, target, Imgproc.getStructuringElement(Imgproc.MORPH_ELLIPSE, new Size(size, size)));
+
+    }
 }
