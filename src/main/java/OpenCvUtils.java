@@ -9,32 +9,30 @@ import java.util.*;
  * Created by sesshoumaru on 9/13/15.
  */
 public class OpenCvUtils {
+    //need adaptive threshold of canny for work
     public static Mat getHoughLines(Mat source) {
         Mat lines = new Mat();
         int threshold = 150;
         int minLineSize = 100;
         int lineGap = 50;
         Mat inverted = new Mat();
+        if (source.type() != CvType.CV_8UC1)
+            Imgproc.cvtColor(source, source, Imgproc.COLOR_BGR2GRAY);
         Core.bitwise_not(source, inverted);
-        Imgproc.cvtColor(inverted, inverted, Imgproc.COLOR_BGR2GRAY);
         Imgproc.HoughLinesP(inverted, lines, 1, Math.PI / 180, threshold, minLineSize, lineGap);
         return lines;
     }
 
-    public static Map<Integer, Integer> detectMostPossibleRotationAngle(Mat source) {
-        Map<Integer, Integer> anglesCount = new HashMap<Integer, Integer>();
-        Mat lines = getHoughLines(source);
+    public static Map<Integer, Integer> calculateAnglesQuantity(Mat lines) {
+        Map<Integer, Integer> result = new HashMap<Integer, Integer>();
         for (int x = 0; x < lines.cols(); x++) {
             double[] vec = lines.get(0, x);
-
             double angle = Math.atan2(vec[3] - vec[1], vec[2] - vec[0]);
             int angleInDegrees = (int) Math.round(angle * 180 / Math.PI);
-            if (anglesCount.get(angleInDegrees) != null)
-                anglesCount.put(angleInDegrees, anglesCount.get(angleInDegrees) + 1);
-            else
-                anglesCount.put(angleInDegrees, 0);
+            int quantity = result.get(angleInDegrees) != null ? result.get(angleInDegrees) : 0;
+            result.put(angleInDegrees, quantity + 1);
         }
-        return anglesCount;
+        return result;
     }
 
     public static void rotate(Mat source, Mat target, double degreeAngle) {
@@ -60,12 +58,21 @@ public class OpenCvUtils {
         return result.size() != 0;
     }
 
+    @Deprecated
     public static void adaptiveThreshold(File source, File target) {
         Mat opencvSource = Highgui.imread(source.getAbsolutePath());
         Mat temp = new Mat();
         Imgproc.cvtColor(opencvSource, temp, Imgproc.COLOR_BGR2GRAY);
         Imgproc.adaptiveThreshold(temp, temp, 255, Imgproc.ADAPTIVE_THRESH_GAUSSIAN_C, Imgproc.THRESH_BINARY, 11, 8);
         Highgui.imwrite(target.getAbsolutePath(), temp);
+    }
+
+    public static Mat adaptiveThreshold(Mat source) {
+        Mat result = new Mat();
+        if (source.type() != CvType.CV_8UC1)
+            Imgproc.cvtColor(source, result, Imgproc.COLOR_BGR2GRAY);
+        Imgproc.adaptiveThreshold(result, result, 255, Imgproc.ADAPTIVE_THRESH_GAUSSIAN_C, Imgproc.THRESH_BINARY, 11, 8);
+        return result;
     }
 
     public static void convexHull(File source, File target) {
@@ -109,8 +116,9 @@ public class OpenCvUtils {
     public static List<Rect> detectLetters(Mat img) {
         //Mat img = Highgui.imread(source.getAbsolutePath());
         List<Rect> boundRect = new ArrayList<Rect>();
-        Mat img_gray = new Mat(), img_sobel = new Mat(), img_threshold = new Mat(), element;
-        Imgproc.cvtColor(img, img_gray, Imgproc.COLOR_BGR2GRAY);
+        Mat img_gray = img.clone(), img_sobel = new Mat(), img_threshold = new Mat(), element;
+        if (img_gray.type() != CvType.CV_8UC1)
+            Imgproc.cvtColor(img_gray, img_gray, Imgproc.COLOR_BGR2GRAY);
         //Imgproc.Sobel(img_gray,img_sobel, img_gray.depth(), 1, 0);
         Imgproc.Sobel(img_gray, img_sobel, img_gray.depth(), 1, 0, 3, 1, 0, Imgproc.BORDER_DEFAULT);
         //cv::Sobel(img_gray, img_sobel, CV_8U, 1, 0, 3, 1, 0, cv::BORDER_DEFAULT);
@@ -248,10 +256,11 @@ public class OpenCvUtils {
         return (dx1 * dx2 + dy1 * dy2) / Math.sqrt((dx1 * dx1 + dy1 * dy1) * (dx2 * dx2 + dy2 * dy2) + 1e-10);
     }
 
-    public static void erode(Mat source, Mat target) {
+    public static Mat erode(Mat source) {
+        Mat result = new Mat();
         int size = Math.max(source.rows(), source.cols()) / 100;
         size = size == 0 ? 1 : size;
-        Imgproc.erode(source, target, Imgproc.getStructuringElement(Imgproc.MORPH_ELLIPSE, new Size(size, size)));
-
+        Imgproc.erode(source, result, Imgproc.getStructuringElement(Imgproc.MORPH_ELLIPSE, new Size(size, size)));
+        return result;
     }
 }

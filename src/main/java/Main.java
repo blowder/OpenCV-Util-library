@@ -2,7 +2,8 @@ import org.opencv.core.*;
 import org.opencv.highgui.Highgui;
 import org.opencv.imgproc.Imgproc;
 
-import java.io.*;
+import java.io.File;
+import java.io.IOException;
 import java.util.*;
 
 /**
@@ -10,21 +11,27 @@ import java.util.*;
  */
 public class Main {
     static {
+        System.out.println("Trying to load library " + Core.NATIVE_LIBRARY_NAME);
         System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
     }
 
     public static void main(String... args) throws IOException {
-        File source = new File("/home/sesshoumaru/bilet_skew.jpg");
-        File target = new File("/home/sesshoumaru/target.png");
+        File source = new File("C:\\bills\\bilet.JPG");
+        File target = new File("C:\\bills\\target.png");
+
+        long startTime = System.currentTimeMillis();
 
 
-        Mat temp = new Mat();
-        OpenCvUtils.erode(Highgui.imread(source.getAbsolutePath()), temp);
+        Mat temp = OpenCvUtils.erode(Highgui.imread(source.getAbsolutePath()));
         Highgui.imwrite(target.getAbsolutePath(), temp);
-        OpenCvUtils.adaptiveThreshold(target, target);
 
-        temp = Highgui.imread(target.getAbsolutePath());
-        Map<Integer, Integer> angles = OpenCvUtils.detectMostPossibleRotationAngle(temp);
+        temp = OpenCvUtils.adaptiveThreshold(temp);
+        Highgui.imwrite(target.getAbsolutePath(), temp);
+
+        Mat lines = OpenCvUtils.getHoughLines(temp);
+
+        Map<Integer, Integer> angles = OpenCvUtils.calculateAnglesQuantity(lines);
+
         List<Map.Entry<Integer, Integer>> sortedAngles = new ArrayList<Map.Entry<Integer, Integer>>(angles.entrySet());
         Iterator<Map.Entry<Integer, Integer>> iterator = sortedAngles.iterator();
         while (iterator.hasNext()) {
@@ -37,23 +44,23 @@ public class Main {
                 return Integer.compare(o1.getValue(), o2.getValue());
             }
         });
+
         OpenCvUtils.rotate(Highgui.imread(source.getAbsolutePath()), temp, sortedAngles.get(sortedAngles.size() - 1).getKey());
+        //Highgui.imwrite(target.getAbsolutePath(), temp);
+        temp = OpenCvUtils.adaptiveThreshold(temp);
+        //OpenCvUtils.adaptiveThreshold(target, target);
+        //temp = Highgui.imread(target.getAbsolutePath());
+        Imgproc.blur(temp, temp, new Size(2, 2));
+        List<Rect> rectangles = OpenCvUtils.detectLetters(temp);
 
-        Highgui.imwrite(target.getAbsolutePath(), temp);
-        OpenCvUtils.adaptiveThreshold(target, target);
-        temp = Highgui.imread(target.getAbsolutePath());
-        Imgproc.blur(temp, temp, new Size(3, 3));
-        List<Rect> rects = OpenCvUtils.detectLetters(temp);
-
-        List<Rect> filteredRects = new ArrayList<Rect>();
-        for (Rect rect : rects) {
-            if (rect.area() > 30 * 30)
-                filteredRects.add(rect);
-
+        List<Rect> filteredRectangles = new ArrayList<Rect>();
+        for (Rect rect : rectangles) {
+            if (rect.area() > 20 * 20)
+                filteredRectangles.add(rect);
         }
         List<Point> points = new ArrayList<Point>();
-        for (Rect rect : filteredRects) {
-            Core.rectangle(temp, rect.tl(), rect.br(), new Scalar(0, 0, 0));
+        for (Rect rect : filteredRectangles) {
+            //Core.rectangle(temp, rect.tl(), rect.br(), new Scalar(0, 0, 0));
             points.add(rect.br());
             points.add(rect.tl());
         }
@@ -61,13 +68,12 @@ public class Main {
         Point[] points2 = points.toArray(new Point[points.size()]);
         matOfPoint.fromArray(points2);
         Rect bb = Imgproc.boundingRect(matOfPoint);
-        int outline = 20;
-        Rect resultBB = new Rect(new Point(bb.tl().x-outline,bb.tl().y-outline),new Point(bb.br().x+outline,bb.br().y+outline));
-        Core.rectangle(temp, resultBB.tl(), resultBB.br(), new Scalar(0, 0, 0));
+        int outline = 0;
+        Rect resultBB = new Rect(new Point(bb.tl().x - outline, bb.tl().y - outline), new Point(bb.br().x + outline, bb.br().y + outline));
+        //Core.rectangle(temp, resultBB.tl(), resultBB.br(), new Scalar(0, 0, 0));
 
         Highgui.imwrite(target.getAbsolutePath(), temp.submat(resultBB));
-
-
+        System.out.println("Time is: " + (System.currentTimeMillis() - startTime));
 
     }
 
