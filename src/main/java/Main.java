@@ -37,9 +37,38 @@ public class Main {
                 return Integer.compare(o1.getValue(), o2.getValue());
             }
         });
-        OpenCvUtils.rotate(temp, temp, sortedAngles.get(sortedAngles.size() - 1).getKey());
+        OpenCvUtils.rotate(Highgui.imread(source.getAbsolutePath()), temp, sortedAngles.get(sortedAngles.size() - 1).getKey());
 
         Highgui.imwrite(target.getAbsolutePath(), temp);
+        OpenCvUtils.adaptiveThreshold(target, target);
+        temp = Highgui.imread(target.getAbsolutePath());
+        Imgproc.blur(temp, temp, new Size(3, 3));
+        List<Rect> rects = OpenCvUtils.detectLetters(temp);
+
+        List<Rect> filteredRects = new ArrayList<Rect>();
+        for (Rect rect : rects) {
+            if (rect.area() > 30 * 30)
+                filteredRects.add(rect);
+
+        }
+        List<Point> points = new ArrayList<Point>();
+        for (Rect rect : filteredRects) {
+            Core.rectangle(temp, rect.tl(), rect.br(), new Scalar(0, 0, 0));
+            points.add(rect.br());
+            points.add(rect.tl());
+        }
+        MatOfPoint matOfPoint = new MatOfPoint();
+        Point[] points2 = points.toArray(new Point[points.size()]);
+        matOfPoint.fromArray(points2);
+        Rect bb = Imgproc.boundingRect(matOfPoint);
+        int outline = 20;
+        Rect resultBB = new Rect(new Point(bb.tl().x-outline,bb.tl().y-outline),new Point(bb.br().x+outline,bb.br().y+outline));
+        Core.rectangle(temp, resultBB.tl(), resultBB.br(), new Scalar(0, 0, 0));
+
+        Highgui.imwrite(target.getAbsolutePath(), temp.submat(resultBB));
+
+
+
     }
 
 }
