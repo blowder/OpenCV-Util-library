@@ -46,13 +46,17 @@ public class ImageProcessingService {
         return result.get(0).getKey();
     }
 
+    int getMinRectangleArea(int cols, int rows) {
+        int maxSide = Math.max(cols, rows);
+        return maxSide / 30 * maxSide / 30;
+    }
+
 
     public File prepareForSend(File source, File target) {
         Size blurSize = new Size(2, 2);
         int outline = 20;
         Mat temp = Highgui.imread(source.getAbsolutePath());
-        int maxSide = Math.max(temp.cols(), temp.rows());
-        int minRectangleArea = maxSide / 30 * maxSide / 30;
+        int minRectangleArea = getMinRectangleArea(temp.cols(), temp.rows());
 
         temp = OpenCvUtils.adaptiveThreshold(temp);
         Imgproc.blur(temp, temp, blurSize);
@@ -100,8 +104,43 @@ public class ImageProcessingService {
     }
 
     public boolean isBill(File source) {
+        Mat temp = Highgui.imread(source.getAbsolutePath(), Imgproc.COLOR_BGR2GRAY);
+        int minRectangleArea = getMinRectangleArea(temp.cols(), temp.rows());
 
-        return false;
+        List<Rect> rects = OpenCvUtils.detectLetters2(temp);
+        Iterator<Rect> iterator = rects.iterator();
+        while (iterator.hasNext())
+            if (iterator.next().area() < minRectangleArea)
+                iterator.remove();
+
+        List<Integer> xValues = new ArrayList<Integer>();
+        List<Integer> yValues = new ArrayList<Integer>();
+        for (Rect rect : rects) {
+            xValues.add(rect.x);
+            yValues.add(rect.y);
+        }
+        int mostPopularX = getMostPopular(xValues);
+        int mostPopulary = getMostPopular(yValues);
+        List<Rect> rectsOnLine = new ArrayList<Rect>();
+        for (Rect rect : rects)
+            if ((int) rect.y == mostPopulary)
+                rectsOnLine.add(rect);
+        return rectsOnLine.size() < 1;
+    }
+
+    private int getMostPopular(List<Integer> arguments) {
+        Map<Integer, Integer> argumentCounter = new HashMap<Integer, Integer>();
+        for (Integer argument : arguments) {
+            int counter = argumentCounter.get(argument) == null ? 0 : argumentCounter.get(argument);
+            argumentCounter.put(argument, counter + 1);
+        }
+        List<Map.Entry<Integer, Integer>> sorted = new ArrayList<Map.Entry<Integer, Integer>>(argumentCounter.entrySet());
+        sorted.sort(new Comparator<Map.Entry<Integer, Integer>>() {
+            public int compare(Map.Entry<Integer, Integer> o1, Map.Entry<Integer, Integer> o2) {
+                return Integer.compare(o2.getValue(), o1.getValue());
+            }
+        });
+        return sorted.get(0).getKey();
     }
 
 }

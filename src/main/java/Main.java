@@ -25,6 +25,7 @@ public class Main {
                 try {
                     new ImageProcessingService().detectAndCorrectSkew(name, target);
                     new ImageProcessingService().prepareForSend(target, target);
+                    System.out.println(new ImageProcessingService().isBill(target));
                 } catch (Exception e) {
 
                 }
