@@ -97,22 +97,35 @@ public class OpenCvUtils {
             }
         }
 
-        /*for cnt in contours:
-        if cv2.contourArea(cnt)>5000:  # remove small areas like noise etc
-        hull = cv2.convexHull(cnt)    # find the convex hull of contour
-        hull = cv2.approxPolyDP(hull,0.1*cv2.arcLength(hull,True),True)
-        if len(hull)==4:
-        cv2.drawContours(img,[hull],0,(0,255,0),2)
-
-        cv2.imshow('img',img)
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()*/
     }
 
-    public static MatOfFloat convert(MatOfInt matOfInt) {
-        return new MatOfFloat(matOfInt);
-    }
+    public static List<Rect> detectLetters2(Mat img) {
+        List<Rect> boundRect = new ArrayList<Rect>();
+        Mat element = Imgproc.getStructuringElement(Imgproc.MORPH_ELLIPSE, new Size(3, 3));
+        Mat result= img.clone();
 
+        if (result.type() != CvType.CV_8UC1)
+            Imgproc.cvtColor(result, result, Imgproc.COLOR_BGR2GRAY);
+
+        Imgproc.morphologyEx(result, result, Imgproc.MORPH_GRADIENT, element);
+        Imgproc.threshold(result, result, 0, 255, Imgproc.THRESH_OTSU + Imgproc.THRESH_BINARY);
+
+        element = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, new Size(9, 1));
+        Imgproc.morphologyEx(result, result, Imgproc.MORPH_CLOSE, element);
+
+        List<MatOfPoint> contours = new ArrayList<MatOfPoint>();
+        Imgproc.findContours(result, contours, result, Imgproc.RETR_CCOMP, Imgproc.CHAIN_APPROX_SIMPLE);
+
+        for (MatOfPoint contour : contours) {
+            MatOfPoint2f tempContour = new MatOfPoint2f();
+            Imgproc.approxPolyDP(new MatOfPoint2f(contour.toArray()), tempContour, 3, true);
+            Rect appRect = Imgproc.boundingRect(new MatOfPoint(tempContour.toArray()));
+            if (appRect.width > appRect.height)
+                boundRect.add(appRect);
+        }
+        return boundRect;
+    }
+    @Deprecated
     public static List<Rect> detectLetters(Mat img) {
         //Mat img = Highgui.imread(source.getAbsolutePath());
         List<Rect> boundRect = new ArrayList<Rect>();

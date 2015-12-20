@@ -31,7 +31,7 @@ public class ImageProcessingService {
     private Map<Integer, Integer> filterAngles(int lowerBorder, int upperBorder, Map<Integer, Integer> angles) {
         Map<Integer, Integer> result = new HashMap<Integer, Integer>();
         for (Map.Entry<Integer, Integer> entry : angles.entrySet())
-            if (entry.getKey() > lowerBorder || entry.getKey() < upperBorder)
+            if (entry.getKey() > lowerBorder && entry.getKey() < upperBorder)
                 result.put(entry.getKey(), entry.getValue());
         return result;
     }
@@ -49,16 +49,17 @@ public class ImageProcessingService {
 
     public File prepareForSend(File source, File target) {
         Size blurSize = new Size(2, 2);
-        int minRectangleArea = 30 * 30;
         int outline = 20;
-
         Mat temp = Highgui.imread(source.getAbsolutePath());
+        int maxSide = Math.max(temp.cols(), temp.rows());
+        int minRectangleArea = maxSide / 30 * maxSide / 30;
+
         temp = OpenCvUtils.adaptiveThreshold(temp);
         Imgproc.blur(temp, temp, blurSize);
 
         Highgui.imwrite(target.getAbsolutePath(), temp);
 
-        List<Rect> rectangles = OpenCvUtils.detectLetters(temp);
+        List<Rect> rectangles = OpenCvUtils.detectLetters2(temp);
         if (rectangles.size() == 0)
             throw new RuntimeException("prepareForSend(): Text not found on " + source);
 
@@ -69,7 +70,7 @@ public class ImageProcessingService {
 
         List<Point> points = new ArrayList<Point>();
         for (Rect rect : rectangles) {
-            Core.rectangle(temp, rect.tl(), rect.br(), new Scalar(0, 0, 0));
+            //Core.rectangle(temp, rect.tl(), rect.br(), new Scalar(0, 0, 0));
             points.add(rect.br());
             points.add(rect.tl());
         }
