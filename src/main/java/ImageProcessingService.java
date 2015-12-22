@@ -21,8 +21,8 @@ public class ImageProcessingService {
 
         Map<Integer, Integer> filteredAngles = filterAngles(lowerBorder, upperBorder, angles);
         int skewAngle = getMostPopularAngle(filteredAngles);
-
-        OpenCvUtils.rotate(Highgui.imread(source.getAbsolutePath()), temp, skewAngle);
+        if (skewAngle != 0)
+            OpenCvUtils.rotate(Highgui.imread(source.getAbsolutePath()), temp, skewAngle);
         Highgui.imwrite(target.getAbsolutePath(), temp);
 
         return target;
@@ -43,7 +43,7 @@ public class ImageProcessingService {
                 return Integer.compare(o2.getValue(), o1.getValue());
             }
         });
-        return result.get(0).getKey();
+        return result.size() == 0 ? 0 : result.get(0).getKey();
     }
 
     int getMinRectangleArea(int cols, int rows) {
@@ -74,7 +74,7 @@ public class ImageProcessingService {
 
         List<Point> points = new ArrayList<Point>();
         for (Rect rect : rectangles) {
-            //Core.rectangle(temp, rect.tl(), rect.br(), new Scalar(0, 0, 0));
+            Core.rectangle(temp, rect.tl(), rect.br(), new Scalar(0, 0, 0));
             points.add(rect.br());
             points.add(rect.tl());
         }
@@ -104,37 +104,54 @@ public class ImageProcessingService {
     }
 
     public boolean isBill(File source) {
+        int threshold = 0;
         Mat temp = Highgui.imread(source.getAbsolutePath(), Imgproc.COLOR_BGR2GRAY);
         int minRectangleArea = getMinRectangleArea(temp.cols(), temp.rows());
 
-        List<Rect> rects = OpenCvUtils.detectLetters2(temp);
-        Iterator<Rect> iterator = rects.iterator();
+        List<Rect> rectangles = OpenCvUtils.detectLetters2(temp);
+        Iterator<Rect> iterator = rectangles.iterator();
         while (iterator.hasNext())
             if (iterator.next().area() < minRectangleArea)
                 iterator.remove();
 
         List<Integer> xValues = new ArrayList<Integer>();
         List<Integer> yValues = new ArrayList<Integer>();
-        for (Rect rect : rects) {
+        for (Rect rect : rectangles) {
             xValues.add(rect.x);
+            // xValues.add(rect.x + rect.width);
             yValues.add(rect.y);
+            //yValues.add(rect.y + rect.height);
         }
-        int mostPopularX = getMostPopular(xValues);
-        int mostPopulary = getMostPopular(yValues);
-        List<Rect> rectsOnLine = new ArrayList<Rect>();
-        for (Rect rect : rects)
-            if ((int) rect.y == mostPopulary)
-                rectsOnLine.add(rect);
-        return rectsOnLine.size() < 1;
+        int mostPopularX = getMostPopular(xValues, threshold);
+        int mostPopularY = getMostPopular(yValues, threshold);
+        List<Rect> rectanglesOnHorizontalLine = new ArrayList<Rect>();
+        List<Rect> rectanglesOnVerticalLine = new ArrayList<Rect>();
+        for (Rect rect : rectangles) {
+            if (mostPopularY - threshold <= rect.y && mostPopularY + threshold >= rect.y)
+                rectanglesOnHorizontalLine.add(rect);
+            if (mostPopularX - threshold <= rect.x && mostPopularX + threshold >= rect.x)
+                rectanglesOnVerticalLine.add(rect);
+        }
+
+        return rectanglesOnHorizontalLine.size() > 1 && rectanglesOnVerticalLine.size() > 1;
     }
 
-    private int getMostPopular(List<Integer> arguments) {
+    private int getMostPopular(List<Integer> arguments, int threshold) {
         Map<Integer, Integer> argumentCounter = new HashMap<Integer, Integer>();
         for (Integer argument : arguments) {
-            int counter = argumentCounter.get(argument) == null ? 0 : argumentCounter.get(argument);
-            argumentCounter.put(argument, counter + 1);
+            int counter = argumentCounter.get(argument) == null ? 1 : argumentCounter.get(argument) + 1;
+            argumentCounter.put(argument, counter);
         }
-        List<Map.Entry<Integer, Integer>> sorted = new ArrayList<Map.Entry<Integer, Integer>>(argumentCounter.entrySet());
+        Map<Integer, Integer> newArgumentCounter = new HashMap<Integer, Integer>();
+        newArgumentCounter.putAll(argumentCounter);
+        for (Map.Entry<Integer, Integer> entry : argumentCounter.entrySet())
+            for (int i = entry.getKey() - threshold; i <= entry.getKey() + threshold; i++)
+                if (argumentCounter.get(i) != null && i != entry.getKey()) {
+                    int counter = newArgumentCounter.get(entry.getKey()) == null ? entry.getValue() : newArgumentCounter.get(entry.getKey());
+                    newArgumentCounter.put(entry.getKey(), counter + argumentCounter.get(i));
+                }
+
+        List<Map.Entry<Integer, Integer>> sorted = new ArrayList<Map.Entry<Integer, Integer>>(newArgumentCounter.entrySet());
         sorted.sort(new Comparator<Map.Entry<Integer, Integer>>() {
             public int compare(Map.Entry<Integer, Integer> o1, Map.Entry<Integer, Integer> o2) {
                 return Integer.compare(o2.getValue(), o1.getValue());
