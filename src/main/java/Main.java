@@ -17,7 +17,6 @@ public class Main {
 
     public static void main(String... args) throws IOException {
         File root = new File("/home/sesshoumaru/bills/");
-
         for (File name : root.listFiles()) {
             if (name.isFile() && !name.getName().startsWith("temp_")) {
                 long startTime = System.currentTimeMillis();
@@ -32,11 +31,10 @@ public class Main {
                 System.out.println("Time for file : " + name.getName() + " is " + (System.currentTimeMillis() - startTime));
             }
         }
-/*        File name = new File(root, "bilet_skew.jpg");
+     /*   File name = new File(root, "IMG_20151227_152023.jpg");
         File target = new File(root, "temp_" + name.getName());
-        new ImageProcessingService().detectAndCorrectSkew(name, target);
-        new ImageProcessingService().prepareForSend(target, target);*/
+        prepareForSend(name, target);*/
+        //new ImageProcessingService().prepareForSend(target, target);
 
     }
-
 }
