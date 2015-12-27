@@ -1,3 +1,4 @@
+
 import org.opencv.core.*;
 import org.opencv.highgui.Highgui;
 import org.opencv.imgproc.Imgproc;
@@ -21,6 +22,22 @@ public class OpenCvUtils {
         Core.bitwise_not(source, inverted);
         Imgproc.HoughLinesP(inverted, lines, 1, Math.PI / 180, threshold, minLineSize, lineGap);
         return lines;
+    }
+
+    public static Mat denoise(Mat source, Size maxNoiseSize) {
+        Mat result = new Mat();
+        Mat kernel = new Mat(maxNoiseSize, CvType.CV_8UC1, new Scalar(255));
+        Imgproc.morphologyEx(source, result, Imgproc.MORPH_OPEN, kernel);
+        Imgproc.morphologyEx(result, result, Imgproc.MORPH_CLOSE, kernel);
+        return result;
+    }
+
+    public static Mat resize(Mat source, int width) {
+        Mat result = new Mat();
+        int divider = Math.max(source.cols(), source.rows()) / width;
+        Size size = new Size(source.cols() / divider, source.rows() / divider);
+        Imgproc.resize(source, result, size);
+        return result;
     }
 
     public static Map<Integer, Integer> calculateAnglesQuantity(Mat lines) {
@@ -49,29 +66,12 @@ public class OpenCvUtils {
         Highgui.imwrite(target.getAbsolutePath(), temp);
     }
 
-    public static Mat cropByRect(Mat image, Rect rect) {
-        return image.submat(rect.y, rect.y + rect.height, rect.x, rect.x + rect.width);
-    }
-
-    public static boolean ifContainText(Mat image) {
-        List<Rect> result = detectLetters(image);
-        return result.size() != 0;
-    }
-
-    @Deprecated
-    public static void adaptiveThreshold(File source, File target) {
-        Mat opencvSource = Highgui.imread(source.getAbsolutePath());
-        Mat temp = new Mat();
-        Imgproc.cvtColor(opencvSource, temp, Imgproc.COLOR_BGR2GRAY);
-        Imgproc.adaptiveThreshold(temp, temp, 255, Imgproc.ADAPTIVE_THRESH_GAUSSIAN_C, Imgproc.THRESH_BINARY, 11, 8);
-        Highgui.imwrite(target.getAbsolutePath(), temp);
-    }
 
     public static Mat adaptiveThreshold(Mat source) {
         Mat result = new Mat();
         if (source.type() != CvType.CV_8UC1)
             Imgproc.cvtColor(source, result, Imgproc.COLOR_BGR2GRAY);
-        Imgproc.adaptiveThreshold(result, result, 255, Imgproc.ADAPTIVE_THRESH_GAUSSIAN_C, Imgproc.THRESH_BINARY, 11, 8);
+        Imgproc.adaptiveThreshold(result, result, 255, Imgproc.ADAPTIVE_THRESH_GAUSSIAN_C, Imgproc.THRESH_BINARY, 21, 10);
         return result;
     }
 
@@ -102,7 +102,7 @@ public class OpenCvUtils {
     public static List<Rect> detectLetters2(Mat img) {
         List<Rect> boundRect = new ArrayList<Rect>();
         Mat element = Imgproc.getStructuringElement(Imgproc.MORPH_ELLIPSE, new Size(3, 3));
-        Mat result= img.clone();
+        Mat result = img.clone();
 
         if (result.type() != CvType.CV_8UC1)
             Imgproc.cvtColor(result, result, Imgproc.COLOR_BGR2GRAY);
@@ -125,6 +125,7 @@ public class OpenCvUtils {
         }
         return boundRect;
     }
+
     @Deprecated
     public static List<Rect> detectLetters(Mat img) {
         //Mat img = Highgui.imread(source.getAbsolutePath());

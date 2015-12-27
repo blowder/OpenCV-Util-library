@@ -19,7 +19,7 @@ public class Main {
         File root = new File("/home/sesshoumaru/bills/");
 
         for (File name : root.listFiles()) {
-            if (!name.getName().startsWith("temp_")) {
+            if (name.isFile() && !name.getName().startsWith("temp_")) {
                 long startTime = System.currentTimeMillis();
                 File target = new File(root, "temp_" + name.getName());
                 try {

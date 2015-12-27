@@ -1,6 +1,8 @@
+
 import org.opencv.core.*;
 import org.opencv.highgui.Highgui;
 import org.opencv.imgproc.Imgproc;
+import org.opencv.photo.Photo;
 
 import java.io.File;
 import java.util.*;
@@ -11,20 +13,22 @@ import java.util.*;
 public class ImageProcessingService {
 
     public File detectAndCorrectSkew(File source, File target) {
-        int lowerBorder = -45;
-        int upperBorder = 45;
+        int lowerBorder = -60;
+        int upperBorder = 60;
+        Mat temp = Highgui.imread(source.getAbsolutePath());
+        int width = Math.min(temp.cols(), temp.rows()) / 3;
 
-        Mat temp = OpenCvUtils.erode(Highgui.imread(source.getAbsolutePath()));
+        temp = OpenCvUtils.resize(temp, width);
+        temp = OpenCvUtils.erode(temp);
         temp = OpenCvUtils.adaptiveThreshold(temp);
         Mat detectedLines = OpenCvUtils.getHoughLines(temp);
         Map<Integer, Integer> angles = OpenCvUtils.calculateAnglesQuantity(detectedLines);
-
         Map<Integer, Integer> filteredAngles = filterAngles(lowerBorder, upperBorder, angles);
         int skewAngle = getMostPopularAngle(filteredAngles);
-        if (skewAngle != 0)
-            OpenCvUtils.rotate(Highgui.imread(source.getAbsolutePath()), temp, skewAngle);
-        Highgui.imwrite(target.getAbsolutePath(), temp);
 
+        Mat origin = Highgui.imread(source.getAbsolutePath());
+        OpenCvUtils.rotate(origin, origin, skewAngle);
+        Highgui.imwrite(target.getAbsolutePath(), origin);
         return target;
     }
 
@@ -38,9 +42,9 @@ public class ImageProcessingService {
 
     private int getMostPopularAngle(Map<Integer, Integer> angles) {
         List<Map.Entry<Integer, Integer>> result = new ArrayList<Map.Entry<Integer, Integer>>(angles.entrySet());
-        result.sort(new Comparator<Map.Entry<Integer, Integer>>() {
+        Collections.sort(result, new Comparator<Map.Entry<Integer, Integer>>() {
             public int compare(Map.Entry<Integer, Integer> o1, Map.Entry<Integer, Integer> o2) {
-                return Integer.compare(o2.getValue(), o1.getValue());
+                return o2.getValue().compareTo(o1.getValue());
             }
         });
         return result.size() == 0 ? 0 : result.get(0).getKey();
@@ -48,29 +52,51 @@ public class ImageProcessingService {
 
     int getMinRectangleArea(int cols, int rows) {
         int maxSide = Math.max(cols, rows);
-        return maxSide / 30 * maxSide / 30;
+        return maxSide / 40 * maxSide / 40;
     }
 
 
     public File prepareForSend(File source, File target) {
-        Size blurSize = new Size(2, 2);
-        int outline = 20;
+        Size blurSize = new Size(5, 5);
+        int outline = 50;
         Mat temp = Highgui.imread(source.getAbsolutePath());
+        //temp = OpenCvUtils.resize(temp,1000);
         int minRectangleArea = getMinRectangleArea(temp.cols(), temp.rows());
 
         temp = OpenCvUtils.adaptiveThreshold(temp);
         Imgproc.blur(temp, temp, blurSize);
+        temp = OpenCvUtils.denoise(temp, new Size(2, 2));
 
         Highgui.imwrite(target.getAbsolutePath(), temp);
 
         List<Rect> rectangles = OpenCvUtils.detectLetters2(temp);
+        Mat rotated = new Mat();
+        Core.flip(temp.t(), rotated, 1);
+
+        List<Rect> rotatedRectangles = OpenCvUtils.detectLetters2(rotated);
+        rectangles = rectangles.size() < rotatedRectangles.size() ? rectangles : rotatedRectangles;
+        temp = rectangles.size() < rotatedRectangles.size() ? temp : rotated;
         if (rectangles.size() == 0)
             throw new RuntimeException("prepareForSend(): Text not found on " + source);
-
         Iterator<Rect> iterator = rectangles.iterator();
         while (iterator.hasNext())
             if (iterator.next().area() < minRectangleArea)
                 iterator.remove();
+
+
+        List<Integer> rectanglesHeight = new ArrayList<Integer>();
+        for (Rect rect : rectangles)
+            rectanglesHeight.add(rect.height);
+        int heightThreshold = 50;
+        int height = getMostPopular(rectanglesHeight, heightThreshold);
+
+        iterator = rectangles.iterator();
+        while (iterator.hasNext()) {
+            Rect rect = iterator.next();
+            if (rect.height > height + heightThreshold || rect.height < height-heightThreshold/2)
+                iterator.remove();
+        }
+
 
         List<Point> points = new ArrayList<Point>();
         for (Rect rect : rectangles) {
@@ -152,9 +178,9 @@ public class ImageProcessingService {
                 }
 
         List<Map.Entry<Integer, Integer>> sorted = new ArrayList<Map.Entry<Integer, Integer>>(newArgumentCounter.entrySet());
-        sorted.sort(new Comparator<Map.Entry<Integer, Integer>>() {
+        Collections.sort(sorted, new Comparator<Map.Entry<Integer, Integer>>() {
             public int compare(Map.Entry<Integer, Integer> o1, Map.Entry<Integer, Integer> o2) {
-                return Integer.compare(o2.getValue(), o1.getValue());
+                return o2.getValue().compareTo(o1.getValue());
             }
         });
         return sorted.get(0).getKey();
