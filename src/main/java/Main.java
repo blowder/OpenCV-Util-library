@@ -35,6 +35,5 @@ public class Main {
         File target = new File(root, "temp_" + name.getName());
         prepareForSend(name, target);*/
         //new ImageProcessingService().prepareForSend(target, target);
-
     }
 }
