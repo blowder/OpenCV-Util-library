@@ -2,9 +2,11 @@
 import org.opencv.core.*;
 import org.opencv.highgui.Highgui;
 import org.opencv.imgproc.Imgproc;
-import org.opencv.photo.Photo;
 
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.util.*;
 
 /**
@@ -13,8 +15,8 @@ import java.util.*;
 public class ImageProcessingService {
 
     public File detectAndCorrectSkew(File source, File target) {
-        int lowerBorder = -45;
-        int upperBorder = 45;
+        int lowerBorder = -100;
+        int upperBorder = 100;
         Mat temp = Highgui.imread(source.getAbsolutePath());
         int width = Math.min(temp.cols(), temp.rows()) / 3;
 
@@ -27,7 +29,14 @@ public class ImageProcessingService {
         int skewAngle = getMostPopularAngle(filteredAngles);
 
         Mat origin = Highgui.imread(source.getAbsolutePath());
-        OpenCvUtils.rotate(origin, origin, skewAngle);
+        OpenCvUtils.rotate(origin, origin, -skewAngle);
+        Highgui.imwrite(target.getAbsolutePath(), origin);
+        return target;
+    }
+
+    public File rotate(File source, File target, double degrease) {
+        Mat origin = Highgui.imread(source.getAbsolutePath());
+        OpenCvUtils.rotate(origin, origin, degrease);
         Highgui.imwrite(target.getAbsolutePath(), origin);
         return target;
     }
@@ -71,13 +80,13 @@ public class ImageProcessingService {
 
         List<MatOfPoint> contours = new ArrayList<MatOfPoint>();
         Imgproc.findContours(temp.clone(), contours, new Mat(), Imgproc.RETR_LIST, Imgproc.CHAIN_APPROX_SIMPLE);
-        contours.sort(new Comparator<MatOfPoint>() {
+        Collections.sort(contours, new Comparator<MatOfPoint>() {
             public int compare(MatOfPoint o1, MatOfPoint o2) {
                 return Double.compare(Imgproc.contourArea(o1), Imgproc.contourArea(o2));
             }
         });
         //F1 factor calculation
-       // List<MatOfPoint> resultContours = new ArrayList<MatOfPoint>();
+        // List<MatOfPoint> resultContours = new ArrayList<MatOfPoint>();
         double f1Factor = 0;
         double savedRecall = 0;
         List<Point> listOfPoints = new ArrayList<Point>();
@@ -112,6 +121,15 @@ public class ImageProcessingService {
         Highgui.imwrite(target.getAbsolutePath(), temp.submat(bb));
         return target;
     }
+
+    public File resize(File source, File target, int width, int height) {
+        Mat temp = Highgui.imread(source.getAbsolutePath());
+        Size newSize = OpenCvUtils.getScaledDimension(temp.size(), new Size(width, height));
+        Imgproc.resize(temp, temp, newSize);
+        Highgui.imwrite(target.getAbsolutePath(), temp);
+        return target;
+    }
+
 
     @Deprecated
     public File prepareForSend2(File source, File target) {

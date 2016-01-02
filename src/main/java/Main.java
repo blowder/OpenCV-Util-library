@@ -17,7 +17,7 @@ public class Main {
 
     public static void main(String... args) throws IOException {
         File root = new File("/home/sesshoumaru/bills/");
-        for (File name : root.listFiles()) {
+         for (File name : root.listFiles()) {
             if (name.isFile() && !name.getName().startsWith("temp_")) {
                 long startTime = System.currentTimeMillis();
                 File target = new File(root, "temp_" + name.getName());
@@ -31,9 +31,9 @@ public class Main {
                 System.out.println("Time for file : " + name.getName() + " is " + (System.currentTimeMillis() - startTime));
             }
         }
-     /*   File name = new File(root, "IMG_20151227_152023.jpg");
+       /* File name = new File(root, "собака-песочница-2654844.jpeg");
         File target = new File(root, "temp_" + name.getName());
-        prepareForSend(name, target);*/
-        //new ImageProcessingService().prepareForSend(target, target);
+
+        new ImageProcessingService().rotate(name, target, 45);*/
     }
 }
