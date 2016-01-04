@@ -4,9 +4,6 @@ import org.opencv.highgui.Highgui;
 import org.opencv.imgproc.Imgproc;
 
 import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
 import java.util.*;
 
 /**
@@ -262,4 +259,25 @@ public class ImageProcessingService {
         return sorted.get(0).getKey();
     }
 
+    public void cutOutRectangle(File source, File target, Circle[] circles, Size size) {
+        Mat temp = Highgui.imread(source.getAbsolutePath());
+        Mat src_mat = new Mat(4, 1, CvType.CV_32FC2);
+        Mat dst_mat = new Mat(4, 1, CvType.CV_32FC2);
+
+        src_mat.put(0, 0,
+                circles[0].getX(), circles[0].getY(),
+                circles[1].getX(), circles[1].getY(),
+                circles[2].getX(), circles[2].getY(),
+                circles[3].getX(), circles[3].getY());
+
+        dst_mat.put(0, 0,
+                0, 0,
+                size.width, 0,
+                size.width, size.height,
+                0, size.height);
+
+        Mat transformationMatrix = Imgproc.getPerspectiveTransform(src_mat, dst_mat);
+        Imgproc.warpPerspective(temp, temp, transformationMatrix, size);
+        Highgui.imwrite(target.getAbsolutePath(), temp);
+    }
 }
